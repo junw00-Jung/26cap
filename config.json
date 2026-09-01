@@ -1,0 +1,32 @@
+{
+  "camera_index": 0,
+  "pose_model": "models/pose_landmarker_lite.task",
+  "normalization": {
+    "scale_mode": "hip_width",
+    "visibility_threshold": 0.5,
+    "min_scale": 0.02
+  },
+  "sensor": {
+    "mode": "mock",
+    "sample_rate_hz": 100,
+    "pressure_channels": 8,
+    "serial_port": "COM5",
+    "baudrate": 115200
+  },
+  "step_detection": {
+    "heel_channels": [0,1],
+    "refractory_ms": 450,
+    "min_step_ms": 400,
+    "max_step_ms": 2000
+  },
+  "rehab": {
+    "side": "left",
+    "target_knee_flexion_deg": 50.0,
+    "rep_start_deg": 20.0,
+    "rep_end_deg": 15.0,
+    "trunk_delta_limit_deg": 10.0,
+    "pelvic_tilt_delta_limit_deg": 8.0,
+    "shoulder_tilt_delta_limit_deg": 8.0,
+    "baseline_seconds": 3.0
+  }
+}
