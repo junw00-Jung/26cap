@@ -1,5 +1,8 @@
 # Capstone Gait MVP
 
+> **코드 구조와 각 파일의 역할이 헷갈리면 먼저 [`PROJECT_GUIDE.md`](./PROJECT_GUIDE.md)를 보세요.**  
+> `scripts/`, `src/`, `tests/`, `data/` 폴더가 각각 왜 존재하는지와 전체 데이터 흐름을 한국어로 정리해두었습니다.
+
 현재까지 설계한 내용을 실제 코드 구조로 만든 MVP입니다.
 
 ## 구현 범위
