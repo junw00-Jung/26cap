@@ -80,7 +80,28 @@ data/processed/normal_01/dataset_steps.csv
 
 `dataset_steps.csv`의 **한 행 = 한 걸음** 입니다.
 
-## 4. 재활 ROM + 보상동작 평가
+## 4. 보행 중 실시간 무릎 ROM 평가
+
+카메라 측면에서 화면과 평행하게 걸으세요. 정규화된 발목 궤적으로 한 보행 주기를 찾고, 한 주기가 끝날 때마다 선택한 무릎 ROM을 갱신합니다.
+
+왼쪽 무릎:
+```powershell
+python scripts/gait_rom_live.py --side left
+```
+
+최소 ROM 40도를 기준으로 화면에 PASS/LOW도 표시하려면:
+```powershell
+python scripts/gait_rom_live.py --side left --minimum 40
+```
+
+- 거리 변화의 영향을 줄이기 위해 이 모드는 `robust` body scale을 사용합니다.
+- 신뢰도가 낮은 관절 프레임은 `PoseProcessor`에서 제외됩니다.
+- 단일 프레임 튐의 영향을 줄이기 위해 5~95 percentile ROM을 사용합니다.
+- 사람 전체와 양쪽 발목이 계속 화면 안에 있어야 합니다.
+- 카메라를 향해 앞뒤로 걷기보다 카메라 화면과 평행하게 걷는 것이 더 정확합니다.
+- 실제 압력 깔창 연결 후에는 heel-strike 기반 경계와 교차 검증해야 합니다.
+
+## 5. 재활 ROM + 보상동작 평가
 왼쪽 무릎, 목표 flexion 50°:
 ```powershell
 python scripts/rehab_live.py --side left --target 50
