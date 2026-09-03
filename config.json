@@ -19,6 +19,14 @@
     "min_step_ms": 400,
     "max_step_ms": 2000
   },
+  "live_gait_rom": {
+    "scale_mode": "robust",
+    "min_cycle_ms": 600,
+    "max_cycle_ms": 2200,
+    "direction_epsilon": 0.003,
+    "smoothing_window": 5,
+    "min_samples": 8
+  },
   "rehab": {
     "side": "left",
     "target_knee_flexion_deg": 50.0,
