@@ -20,11 +20,11 @@ def append_rows(path: Path, rows):
         writer.writerows(rows)
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument("--session",default="normal_01"); ap.add_argument("--sensor",choices=["mock","serial"],default=None); ap.add_argument("--port",default=None); ap.add_argument("--duration",type=float,default=30.0)
-    args=ap.parse_args(); config=json.loads((ROOT/"config.json").read_text(encoding="utf-8")); sensor_cfg=config["sensor"]; mode=args.sensor or sensor_cfg["mode"]
-    session_dir=ROOT/"data"/"raw"/args.session; session_dir.mkdir(parents=True,exist_ok=True); pose_path=session_dir/"pose_raw.csv"; sensor_path=session_dir/"sensor_raw.csv"
+    ap=argparse.ArgumentParser(); ap.add_argument("--config",default="config.json"); ap.add_argument("--session",default="normal_01"); ap.add_argument("--sensor",choices=["mock","serial"],default=None); ap.add_argument("--port",default=None); ap.add_argument("--duration",type=float,default=30.0)
+    args=ap.parse_args(); config=json.loads((ROOT/args.config).read_text(encoding="utf-8")); sensor_cfg=config["sensor"]; mode=args.sensor or sensor_cfg["mode"]
+    session_dir=ROOT/"data"/"raw"/args.session; session_dir.mkdir(parents=True,exist_ok=False); pose_path=session_dir/"pose_raw.csv"; sensor_path=session_dir/"sensor_raw.csv"
     pose=PoseProcessor(model_path=str(ROOT/config["pose_model"]),scale_mode=config["normalization"]["scale_mode"],visibility_threshold=config["normalization"]["visibility_threshold"],min_scale=config["normalization"]["min_scale"])
-    sensors=MockSensorSource(sensor_cfg["sample_rate_hz"],sensor_cfg["pressure_channels"]) if mode=="mock" else SerialSensorSource(args.port or sensor_cfg["serial_port"],sensor_cfg["baudrate"],sensor_cfg["pressure_channels"])
+    sensors=MockSensorSource(sensor_cfg["sample_rate_hz"],sensor_cfg["pressure_channels"]) if mode=="mock" else SerialSensorSource(args.port or sensor_cfg["serial_port"],sensor_cfg["baudrate"],sensor_cfg["pressure_channels"],sensor_cfg.get("environment_channels",4))
     cap=cv2.VideoCapture(config["camera_index"])
     if not cap.isOpened(): raise RuntimeError("Cannot open camera.")
     t0=monotonic_ms(); pose_buffer=[]; sensor_buffer=[]

@@ -46,6 +46,9 @@ def extract_step_features(synced_df,segments,label="Normal"):
         if pressure_cols:
             total=step[pressure_cols].sum(axis=1); feat["total_pressure_mean"]=float(total.mean()); feat["total_pressure_peak"]=float(total.max())
             for col in pressure_cols: feat[f"{col}_mean"]=_safe_stat(step[col],"mean"); feat[f"{col}_peak"]=_safe_stat(step[col],"max")
+        for col in step.columns:
+            if col.startswith(("temperature_c_", "humidity_pct_")):
+                feat[f"{col}_mean"] = _safe_stat(step[col], "mean")
         for col in imu_cols:
             x=pd.to_numeric(step[col],errors="coerce").dropna().to_numpy(dtype=float); feat[f"{col}_mean"]=float(np.mean(x)) if x.size else float("nan"); feat[f"{col}_std"]=float(np.std(x)) if x.size else float("nan"); feat[f"{col}_rms"]=rms(x); feat[f"{col}_abs_peak"]=float(np.max(np.abs(x))) if x.size else float("nan")
         if all(c in step for c in ["acc_x","acc_y","acc_z"]):

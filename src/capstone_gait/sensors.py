@@ -28,20 +28,108 @@ class MockSensorSource:
         return rows
     def close(self): pass
 
-class SerialSensorSource:
-    def __init__(self, port: str, baudrate: int = 115200, pressure_channels: int = 8):
-        import serial
-        self.serial=serial.Serial(port,baudrate=baudrate,timeout=0); self.pressure_channels=pressure_channels
-    def poll(self)->List[Dict[str,float]]:
-        rows=[]
-        while self.serial.in_waiting:
-            raw=self.serial.readline()
-            if not raw: break
-            try:
-                obj=json.loads(raw.decode("utf-8",errors="ignore").strip()); pressure=obj.get("pressure",[]); accel=obj.get("accel",[float("nan")]*3); gyro=obj.get("gyro",[float("nan")]*3)
-                row={"timestamp_ms":monotonic_ms()}
-                for i in range(self.pressure_channels): row[f"pressure_{i}"]=float(pressure[i]) if i<len(pressure) else float("nan")
-                row.update({"acc_x":float(accel[0]),"acc_y":float(accel[1]),"acc_z":float(accel[2]),"gyro_x":float(gyro[0]),"gyro_y":float(gyro[1]),"gyro_z":float(gyro[2])}); rows.append(row)
-            except (ValueError,KeyError,TypeError,json.JSONDecodeError): continue
+def numeric(value):
+    if value is None:
+        return float("nan")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("Sensor values must be numbers or null")
+    return float(value) if math.isfinite(value) else float("nan")
+
+
+def packet_to_row(obj, timestamp_ms, pressure_channels=8, environment_channels=4):
+    """Stable CSV schema; absent channels are NaN, never fabricated zeros."""
+    if not isinstance(obj, dict) or not isinstance(obj.get("pressure"), list):
+        raise ValueError("Not a sensor packet")
+    row = {"timestamp_ms": timestamp_ms}
+    for key, prefix, count in [("pressure", "pressure", pressure_channels),
+                               ("temperature_c", "temperature_c", environment_channels),
+                               ("humidity_pct", "humidity_pct", environment_channels)]:
+        values = obj.get(key, [])
+        if not isinstance(values, list) or len(values) > count:
+            raise ValueError(f"Unexpected {key} channel count; check config")
+        for i in range(count):
+            row[f"{prefix}_{i}"] = numeric(values[i]) if i < len(values) else float("nan")
+    for key, prefix in [("accel", "acc"), ("gyro", "gyro")]:
+        values = obj.get(key, [None]*3)
+        if not isinstance(values, list) or len(values) != 3:
+            raise ValueError(f"{key} must contain three axes")
+        for axis, value in zip("xyz", values):
+            row[f"{prefix}_{axis}"] = numeric(value)
+    for key in ("seq", "device_ms", "environment_age_ms"):
+        row[key] = numeric(obj.get(key))
+    return row
+
+
+class PacketDecoder:
+    """Keep incomplete USB reads until newline, with bounded resynchronization."""
+    def __init__(self, pressure_channels=8, environment_channels=4):
+        self.pressure_channels = pressure_channels
+        self.environment_channels = environment_channels
+        self.buffer = bytearray()
+        self.discarding = False
+        self.invalid_packets = 0
+        self.last_message = ""
+
+    def feed(self, chunk):
+        rows = []
+        for byte in chunk:
+            if byte == 10:
+                if self.discarding:
+                    self.discarding = False
+                elif self.buffer:
+                    try:
+                        line = self.buffer.decode("utf-8").strip()
+                        if line.startswith("#"):
+                            self.last_message = line
+                        else:
+                            rows.append(packet_to_row(json.loads(line), monotonic_ms(),
+                                self.pressure_channels, self.environment_channels))
+                    except (ValueError, TypeError, OverflowError):
+                        self.invalid_packets += 1
+                self.buffer.clear()
+            elif not self.discarding:
+                self.buffer.append(byte)
+                if len(self.buffer) > 4096:
+                    self.buffer.clear(); self.discarding = True; self.invalid_packets += 1
         return rows
-    def close(self): self.serial.close()
+
+
+class SerialSensorSource:
+    def __init__(self, port: str, baudrate: int = 115200, pressure_channels: int = 8,
+                 environment_channels: int = 4):
+        import serial
+        import queue
+        import threading
+        self.serial = serial.Serial(port, baudrate=baudrate, timeout=0.1)
+        self.decoder = PacketDecoder(pressure_channels, environment_channels)
+        self.rows = queue.Queue(maxsize=10000)
+        self.stop = threading.Event()
+        self.error = None
+        self.thread = threading.Thread(target=self._read, daemon=True)
+        self.thread.start()
+
+    def _read(self):
+        try:
+            while not self.stop.is_set():
+                chunk = self.serial.read(min(max(self.serial.in_waiting, 1), 4096))
+                for row in self.decoder.feed(chunk):
+                    self.rows.put_nowait(row)
+        except Exception as exc:
+            if not self.stop.is_set():
+                self.error = exc
+
+    def poll(self):
+        import queue
+        if self.error is not None:
+            raise RuntimeError(f"Serial reader stopped: {self.error}") from self.error
+        rows = []
+        while True:
+            try:
+                rows.append(self.rows.get_nowait())
+            except queue.Empty:
+                return rows
+
+    def close(self):
+        self.stop.set()
+        self.thread.join(timeout=1)
+        self.serial.close()

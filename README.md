@@ -1,5 +1,9 @@
 # Capstone Gait MVP
 
+> **ESP32-C3 실제 센서 수집은 [ESP32_START_HERE.md](./ESP32_START_HERE.md)부터 시작하세요.**
+> 압력 4개(C0/2/4/6), SHTC3 4개(PCA9548A CH3~6), BMI270 펌웨어와 VS Code 업로드/CSV 저장 안내입니다.
+> SHTC3와 주소 충돌을 피하려면 PCA9548A A0=3.3V, A1=A2=GND로 **0x71**을 사용하세요.
+
 > **코드 구조와 각 파일의 역할이 헷갈리면 먼저 [`PROJECT_GUIDE.md`](./PROJECT_GUIDE.md)를 보세요.**  
 > `scripts/`, `src/`, `tests/`, `data/` 폴더가 각각 왜 존재하는지와 전체 데이터 흐름을 한국어로 정리해두었습니다.
 
@@ -118,6 +122,9 @@ python scripts/rehab_live.py --side left --target 50
 ---
 
 # 실제 ESP32 연결
+
+현재 배선에는 `config.hardware.json`을 사용합니다. 펌웨어와 온습도 포함 수신 방법은
+[ESP32 시작 안내](./ESP32_START_HERE.md)를 보세요. 아래 8채널 예시는 기존 패킷 호환 형식입니다.
 
 현재 collector는 아래 JSON 한 줄을 ESP32에서 받을 수 있도록 만들어 두었습니다.
 

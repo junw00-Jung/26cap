@@ -19,9 +19,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--session", default="normal_01")
     ap.add_argument("--label", default="Normal")
+    ap.add_argument("--config", default="config.json")
     args = ap.parse_args()
 
-    cfg = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
+    cfg = json.loads((ROOT / args.config).read_text(encoding="utf-8"))
     raw = ROOT / "data" / "raw" / args.session
     out_dir = ROOT / "data" / "processed" / args.session
     out_dir.mkdir(parents=True, exist_ok=True)
